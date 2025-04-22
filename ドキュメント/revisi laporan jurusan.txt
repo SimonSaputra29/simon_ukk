@@ -1,8 +1,0 @@
-1, di page awal ukuran logo wikrama 5x5, alamat di hapus, email & website di hapus
-2. font nya pakai times
-3. buat nis di pakein () 
-4. di page kata pengantar posisi 1 kepsek 2 ceo 3 pembimbing instani 4 pembimbing sekolah, dilanjut sesuai yang kita inginkan
-5. di page daftar isi 
-6. teks biasa font nya 12 & judul font nya 14 
-7. setiap paragraf di kasih tab 2 kali
-8. Visi dan Misi di miringin
