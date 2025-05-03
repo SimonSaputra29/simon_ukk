@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Api;
+namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use App\Models\Book;
@@ -8,64 +8,101 @@ use Illuminate\Http\Request;
 
 class BookApiController extends Controller
 {
-    // Ambil semua buku
     public function index()
     {
-        return response()->json(Book::all());
+        return response()->json(Book::all(), 200);
     }
 
-    // Simpan buku baru
+    public function show($id)
+    {
+        $book = Book::find($id);
+        if ($book) {
+            return response()->json($book, 200);
+        }
+
+        return response()->json(['message' => 'Book not found'], 404);
+    }
+
     public function store(Request $request)
     {
         $data = $request->validate([
-            'judul'    => 'required|string|max:255',
-            'penulis'  => 'required|string|max:255',
+            'judul' => 'required|string|max:255',
+            'penulis' => 'required|string|max:255',
             'kategori' => 'required|string|max:255',
-            'stok'     => 'required|integer|min:0',
+            'stok' => 'required|integer|min:0',
+            'gambar' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
         ]);
 
-        $book = Book::create($data);
+        if ($request->hasFile('gambar')) {
+            $imagePath = $request->file('gambar')->store('public/books');
+            $imageName = basename($imagePath);
+        }
 
-        return response()->json([
-            'message' => 'Buku berhasil ditambahkan',
-            'data' => $book
-        ], 201);
+        $book = Book::create([
+            'judul' => $data['judul'],
+            'penulis' => $data['penulis'],
+            'kategori' => $data['kategori'],
+            'stok' => $data['stok'],
+            'gambar' => $imageName ?? null,
+        ]);
+
+        return response()->json($book, 201);
     }
 
-    // Tampilkan detail buku
-    public function show($id)
-    {
-        $book = Book::findOrFail($id);
-
-        return response()->json($book);
-    }
-
-    // Update buku
     public function update(Request $request, $id)
     {
-        $book = Book::findOrFail($id);
+        // Cari buku berdasarkan ID
+        $book = Book::find($id);
+        if (!$book) {
+            return response()->json(['message' => 'Book not found'], 404);
+        }
 
+        // Validasi data yang diterima (field tidak perlu semua dikirimkan)
         $data = $request->validate([
-            'judul'    => 'required|string|max:255',
-            'penulis'  => 'required|string|max:255',
-            'kategori' => 'required|string|max:255',
-            'stok'     => 'required|integer|min:0',
+            'judul' => 'nullable|string|max:255',  // Tidak wajib
+            'penulis' => 'nullable|string|max:255', // Tidak wajib
+            'kategori' => 'nullable|string|max:255', // Tidak wajib
+            'stok' => 'nullable|integer|min:0', // Tidak wajib
+            'gambar' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:2048', // Gambar boleh kosong
         ]);
 
-        $book->update($data);
+        // Proses gambar jika ada
+        if ($request->hasFile('gambar')) {
+            // Hapus gambar lama jika ada
+            if ($book->gambar && file_exists(storage_path('app/public/books/' . $book->gambar))) {
+                unlink(storage_path('app/public/books/' . $book->gambar));
+            }
 
-        return response()->json([
-            'message' => 'Buku berhasil diperbarui',
-            'data' => $book
+            // Simpan gambar baru
+            $imagePath = $request->file('gambar')->store('public/books');
+            $imageName = basename($imagePath);
+        }
+
+        // Update data buku (hanya update field yang ada di request)
+        $book->update([
+            'judul' => $data['judul'] ?? $book->judul,  // Jika tidak ada data baru, gunakan yang lama
+            'penulis' => $data['penulis'] ?? $book->penulis,
+            'kategori' => $data['kategori'] ?? $book->kategori,
+            'stok' => $data['stok'] ?? $book->stok,
+            'gambar' => $imageName ?? $book->gambar, // Gunakan gambar baru jika ada, jika tidak tetap gambar lama
         ]);
+
+        return response()->json($book, 200);
     }
 
-    // Hapus buku
     public function destroy($id)
     {
-        $book = Book::findOrFail($id);
+        $book = Book::find($id);
+        if (!$book) {
+            return response()->json(['message' => 'Book not found'], 404);
+        }
+
+        if ($book->gambar && file_exists(storage_path('app/public/books/' . $book->gambar))) {
+            unlink(storage_path('app/public/books/' . $book->gambar));
+        }
+
         $book->delete();
 
-        return response()->json(['message' => 'Buku berhasil dihapus']);
+        return response()->json(['message' => 'Book deleted successfully'], 200);
     }
 }

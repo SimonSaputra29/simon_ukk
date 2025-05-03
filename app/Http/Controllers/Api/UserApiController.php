@@ -1,20 +1,29 @@
 <?php
 
-namespace App\Http\Controllers\Api;
+namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 
 class UserApiController extends Controller
 {
-    // Ambil semua User
     public function index()
     {
-        return response()->json(User::all());
+        return response()->json(User::all(), 200);
     }
 
-    // Simpan User baru
+    public function show($id)
+    {
+        $user = User::find($id);
+        if ($user) {
+            return response()->json($user, 200);
+        }
+
+        return response()->json(['message' => 'User not found'], 404);
+    }
+
     public function store(Request $request)
     {
         $data = $request->validate([
@@ -24,48 +33,54 @@ class UserApiController extends Controller
             'password' => 'required|string|min:6|confirmed',
         ]);
 
-        $user = User::create($data);
+        $user = User::create([
+            'name' => $data['name'],
+            'email' => $data['email'],
+            'role' => $data['role'],
+            'password' => Hash::make($data['password']),
+        ]);
 
-        return response()->json([
-            'message' => 'User berhasil ditambahkan',
-            'data' => $user
-        ], 201);
+        return response()->json($user, 201);
     }
 
-    // Tampilkan detail User
-    public function show($id)
-    {
-        $user = User::findOrFail($id);
-
-        return response()->json($user);
-    }
-
-    // Update User
     public function update(Request $request, $id)
     {
-        $user = User::findOrFail($id);
+        $user = User::find($id);
+        if (!$user) {
+            return response()->json(['message' => 'User not found'], 404);
+        }
 
         $data = $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email,',
-            'password' => 'required|string|min:6|confirmed',
+            'email' => 'required|email|unique:users,email,' . $user->id,
             'role' => 'required|in:administrator,petugas,visitor',
+            'password' => 'nullable|string|min:6|confirmed',
         ]);
 
-        $user->update($data);
+        $updateData = [
+            'name' => $data['name'],
+            'email' => $data['email'],
+            'role' => $data['role'],
+        ];
 
-        return response()->json([
-            'message' => 'User berhasil diperbarui',
-            'data' => $user
-        ]);
+        if ($request->filled('password')) {
+            $updateData['password'] = Hash::make($data['password']);
+        }
+
+        $user->update($updateData);
+
+        return response()->json($user, 200);
     }
 
-    // Hapus User
     public function destroy($id)
     {
-        $user = User::findOrFail($id);
+        $user = User::find($id);
+        if (!$user) {
+            return response()->json(['message' => 'User not found'], 404);
+        }
+
         $user->delete();
 
-        return response()->json(['message' => 'User berhasil dihapus']);
+        return response()->json(['message' => 'User deleted successfully'], 200);
     }
 }
